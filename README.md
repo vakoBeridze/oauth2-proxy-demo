@@ -47,9 +47,6 @@ This project demonstrates how to:
 ## 🛠️ Installation & Setup
 
 ### 1. Project Structure
-
-Create the following directory structure:
-
 ```
 .
 ├── docker-compose.yml
@@ -63,7 +60,7 @@ Create the following directory structure:
 │       └── photo.jpg
 └── keycloak/
     └── realms/
-        └── demo-realm.json (optional)
+        └── demo-realm.json
 ```
 
 ### 2. Start Services
