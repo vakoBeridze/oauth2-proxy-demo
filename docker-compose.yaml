@@ -1,0 +1,124 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for Keycloak
+  postgres:
+    image: postgres:15-alpine
+    container_name: keycloak-db
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: keycloak_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U keycloak" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Keycloak Server
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: keycloak
+    command:
+      - start-dev
+      - --import-realm
+      - --hostname-url=http://localhost:8081
+      - --hostname-admin-url=http://localhost:8081
+      - --hostname-strict=false
+      - --hostname-strict-backchannel=false
+    volumes:
+      - ./keycloak/realms:/opt/keycloak/data/import
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak_password
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY: edge
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+    ports:
+      - "8081:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e 'GET /health/ready HTTP/1.1\r\nhost: http://localhost\r\nConnection: close\r\n\r\n' >&3;grep -q '200 OK' <&3" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
+
+  # Nginx serving static content
+  nginx:
+    image: nginx:alpine
+    container_name: static-nginx
+    volumes:
+      - ./html:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - app-network
+    healthcheck:
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # OAuth2 Proxy
+  oauth2-proxy:
+    image: quay.io/oauth2-proxy/oauth2-proxy:v7.5.1
+    container_name: oauth2-proxy
+    command:
+      - --http-address=0.0.0.0:4180
+      - --reverse-proxy=true
+      - --upstream=http://nginx:80
+      - --provider=keycloak-oidc
+      - --client-id=oauth2-proxy
+      - --client-secret=6mnIv34o4c6ZJcDNyOcQ493MEPc4TlO9
+      - --redirect-url=http://localhost:4180/oauth2/callback
+      # Use container hostname for all internal OAuth2 communication
+      - --oidc-issuer-url=http://keycloak:8080/realms/demo
+      - --login-url=http://localhost:8081/realms/demo/protocol/openid-connect/auth
+      - --redeem-url=http://keycloak:8080/realms/demo/protocol/openid-connect/token
+      - --validate-url=http://keycloak:8080/realms/demo/protocol/openid-connect/userinfo
+      - --oidc-jwks-url=http://keycloak:8080/realms/demo/protocol/openid-connect/certs
+      - --code-challenge-method=S256
+      - --cookie-secret=RjJFNzQ5MjM0NTY3ODkwMTIzNDU2Nzg5MDEyMzQ1Njc=
+      - --cookie-secure=false
+      - --cookie-name=_oauth2_proxy_demo
+      - --email-domain=*
+      - --skip-provider-button=true
+      - --insecure-oidc-allow-unverified-email=true
+      - --insecure-oidc-skip-issuer-verification=true
+      - --ssl-insecure-skip-verify=true
+      - --pass-access-token=true
+      - --pass-authorization-header=true
+      - --set-xauthrequest=true
+      - --cookie-refresh=1m
+      - --cookie-expire=30m
+      - --scope=openid email profile
+    ports:
+      - "4180:4180"
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      nginx:
+        condition: service_healthy
+    networks:
+      - app-network
+    restart: on-failure
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

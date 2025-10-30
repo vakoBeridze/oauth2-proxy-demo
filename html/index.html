@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secured Static Site - OAuth2 Proxy Demo</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #333;
+            border-bottom: 3px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+
+        .resource-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .resource-list li {
+            margin: 15px 0;
+            padding: 15px;
+            background: #f9f9f9;
+            border-left: 4px solid #4CAF50;
+        }
+
+        .resource-list a {
+            color: #2196F3;
+            text-decoration: none;
+            font-weight: bold;
+        }
+
+        .resource-list a:hover {
+            text-decoration: underline;
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 4px;
+            margin: 20px 0;
+        }
+
+        .success {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🔒 Secured Static Site Demo</h1>
+
+    <div class="info-box">
+        <p class="success">✅ You are authenticated via Keycloak through OAuth2 Proxy!</p>
+        <p>All resources on this page are now secured and require authentication to access.</p>
+    </div>
+
+    <h2>Protected Resources</h2>
+    <ul class="resource-list">
+        <li>
+            📄 <a href="/documents/sample.pdf" target="_blank">Sample PDF Document</a>
+            <br><small>Try opening this in a new tab - it's protected!</small>
+        </li>
+        <li>
+            📄 <a href="/documents/report.pdf" target="_blank">Report PDF</a>
+            <br><small>Another protected PDF resource</small>
+        </li>
+        <li>
+            🖼️ <a href="/images/photo.jpg" target="_blank">Protected Image</a>
+            <br><small>Images are also secured</small>
+        </li>
+    </ul>
+
+    <h2>Embedded Protected Image</h2>
+    <img src="/images/photo.jpg" alt="Protected embedded image">
+
+    <h2>Test Authentication</h2>
+    <p>Try these tests:</p>
+    <ul>
+        <li>Open a protected PDF link in a new incognito window - you'll be redirected to Keycloak</li>
+        <li>After authentication, you'll be able to access all resources</li>
+        <li>Logout and try again to see the protection in action</li>
+    </ul>
+
+    <div class="info-box">
+        <strong>Logout:</strong> <a href="/oauth2/sign_out">Click here to logout</a>
+    </div>
+</div>
+</body>
+</html>
