@@ -43,6 +43,7 @@ services:
       KC_PROXY: edge
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+      KC_HEALTH_ENABLED: "true"
     ports:
       - "8081:8080"
     depends_on:
@@ -51,11 +52,11 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080;echo -e 'GET /health/ready HTTP/1.1\r\nhost: http://localhost\r\nConnection: close\r\n\r\n' >&3;grep -q '200 OK' <&3" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 90s
+      test: [ "CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && echo -e 'GET /realms/demo/.well-known/openid-configuration HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && cat <&3 | grep -q 'issuer'" ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 30s
 
   # Nginx serving static content
   nginx:
@@ -66,11 +67,6 @@ services:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     networks:
       - app-network
-    healthcheck:
-      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80" ]
-      interval: 10s
-      timeout: 5s
-      retries: 3
 
   # OAuth2 Proxy
   oauth2-proxy:
@@ -84,7 +80,6 @@ services:
       - --client-id=oauth2-proxy
       - --client-secret=6mnIv34o4c6ZJcDNyOcQ493MEPc4TlO9
       - --redirect-url=http://localhost:4180/oauth2/callback
-      # Use container hostname for all internal OAuth2 communication
       - --oidc-issuer-url=http://keycloak:8080/realms/demo
       - --login-url=http://localhost:8081/realms/demo/protocol/openid-connect/auth
       - --redeem-url=http://keycloak:8080/realms/demo/protocol/openid-connect/token
@@ -105,13 +100,14 @@ services:
       - --cookie-refresh=1m
       - --cookie-expire=30m
       - --scope=openid email profile
+    #      - --oidc-extra-audience=account
     ports:
       - "4180:4180"
     depends_on:
       keycloak:
         condition: service_healthy
       nginx:
-        condition: service_healthy
+        condition: service_started
     networks:
       - app-network
     restart: on-failure
